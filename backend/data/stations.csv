@@ -1,0 +1,5 @@
+station_id,name,longitude,latitude,ground_elevation_m,warning_stage_m,danger_stage_m,data_status
+ST-01,Mukkombu (Upper Anicut) Regulator,78.663,10.872,80.0,72.5,74.0,OPERATIONAL GAUGE
+ST-02,Srirangam Amma Mandapam Ghat,78.692,10.8568,74.0,72.0,73.5,ACTIVE SENSOR POINT
+ST-03,Kollidam Road Bridge & Regulator,78.697,10.8785,73.0,71.5,73.0,ACTIVE SENSOR POINT
+ST-04,Grand Anicut (Kallanai) Reference,78.745,10.85,65.0,69.5,71.0,REFERENCE BARRAGE

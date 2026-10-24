@@ -1,0 +1,416 @@
+{
+  "type": "FeatureCollection",
+  "name": "Srirangam Key Structures and Vulnerability Footprints",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLD-01",
+        "name": "Sri Ranganathaswamy Temple Complex",
+        "type": "Heritage / Religious Complex",
+        "height": 35.0,
+        "render_height": 35.0,
+        "ground_elevation_m": 74.0,
+        "occupancy": "High Cultural & Assembly",
+        "risk_category": "SAFE",
+        "estimated_depth_m": 0.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.6918,
+              10.861
+            ],
+            [
+              78.6955,
+              10.861
+            ],
+            [
+              78.6955,
+              10.8645
+            ],
+            [
+              78.6918,
+              10.8645
+            ],
+            [
+              78.6918,
+              10.861
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLD-02",
+        "name": "Rajagopuram & South Car Street",
+        "type": "Temple Gopuram Landmark",
+        "height": 73.0,
+        "render_height": 73.0,
+        "ground_elevation_m": 74.0,
+        "occupancy": "Prominent Tower Landmark",
+        "risk_category": "SAFE",
+        "estimated_depth_m": 0.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.6926,
+              10.8592
+            ],
+            [
+              78.6938,
+              10.8592
+            ],
+            [
+              78.6938,
+              10.8604
+            ],
+            [
+              78.6926,
+              10.8604
+            ],
+            [
+              78.6926,
+              10.8592
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLD-03",
+        "name": "Srirangam Government Hospital",
+        "type": "Critical Healthcare Facility",
+        "height": 12.0,
+        "render_height": 12.0,
+        "ground_elevation_m": 76.0,
+        "occupancy": "Emergency Medical Services",
+        "risk_category": "SAFE",
+        "estimated_depth_m": 0.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.6972,
+              10.8602
+            ],
+            [
+              78.6988,
+              10.8602
+            ],
+            [
+              78.6988,
+              10.8618
+            ],
+            [
+              78.6972,
+              10.8618
+            ],
+            [
+              78.6972,
+              10.8602
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLD-04",
+        "name": "Srirangam Railway Station & Hub",
+        "type": "Transportation Infrastructure",
+        "height": 10.0,
+        "render_height": 10.0,
+        "ground_elevation_m": 68.0,
+        "occupancy": "Transit Hub",
+        "risk_category": "SAFE",
+        "estimated_depth_m": 0.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.6987,
+              10.8642
+            ],
+            [
+              78.7003,
+              10.8642
+            ],
+            [
+              78.7003,
+              10.8658
+            ],
+            [
+              78.6987,
+              10.8658
+            ],
+            [
+              78.6987,
+              10.8642
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLD-05",
+        "name": "Melur Lowland Agricultural & Residential Zone",
+        "type": "Residential & Farming Settlement",
+        "height": 7.0,
+        "render_height": 7.0,
+        "ground_elevation_m": 82.0,
+        "occupancy": "Vulnerable Lowland Settlement",
+        "risk_category": "SAFE",
+        "estimated_depth_m": 0.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.6815,
+              10.8665
+            ],
+            [
+              78.6845,
+              10.8665
+            ],
+            [
+              78.6845,
+              10.8695
+            ],
+            [
+              78.6815,
+              10.8695
+            ],
+            [
+              78.6815,
+              10.8665
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLD-06",
+        "name": "Amma Mandapam Riverfront Community",
+        "type": "Riverfront Residential & Commercial",
+        "height": 8.5,
+        "render_height": 8.5,
+        "ground_elevation_m": 74.0,
+        "occupancy": "Dense Riverbank Settlement",
+        "risk_category": "SAFE",
+        "estimated_depth_m": 0.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.6915,
+              10.8565
+            ],
+            [
+              78.6935,
+              10.8565
+            ],
+            [
+              78.6935,
+              10.8585
+            ],
+            [
+              78.6915,
+              10.8585
+            ],
+            [
+              78.6915,
+              10.8565
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLD-07",
+        "name": "Kollidam Yatri Nivas Tourist Complex",
+        "type": "Public Accommodation",
+        "height": 14.0,
+        "render_height": 14.0,
+        "ground_elevation_m": 69.0,
+        "occupancy": "Temporary Shelter / Lodge",
+        "risk_category": "SAFE",
+        "estimated_depth_m": 0.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.6955,
+              10.875
+            ],
+            [
+              78.6975,
+              10.875
+            ],
+            [
+              78.6975,
+              10.877
+            ],
+            [
+              78.6955,
+              10.877
+            ],
+            [
+              78.6955,
+              10.875
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLD-08",
+        "name": "Thiruvanaikaval Jambukeswarar Temple Zone",
+        "type": "Heritage Water Element Temple",
+        "height": 25.0,
+        "render_height": 25.0,
+        "ground_elevation_m": 76.0,
+        "occupancy": "Cultural Heritage Site",
+        "risk_category": "SAFE",
+        "estimated_depth_m": 0.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.7035,
+              10.852
+            ],
+            [
+              78.7065,
+              10.852
+            ],
+            [
+              78.7065,
+              10.855
+            ],
+            [
+              78.7035,
+              10.855
+            ],
+            [
+              78.7035,
+              10.852
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLD-09",
+        "name": "Boys Higher Secondary School & Relief Shelter",
+        "type": "Designated Evacuation Shelter",
+        "height": 11.0,
+        "render_height": 11.0,
+        "ground_elevation_m": 71.0,
+        "occupancy": "Evacuation Assembly Point",
+        "risk_category": "SAFE",
+        "estimated_depth_m": 0.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.695,
+              10.8645
+            ],
+            [
+              78.697,
+              10.8645
+            ],
+            [
+              78.697,
+              10.8665
+            ],
+            [
+              78.695,
+              10.8665
+            ],
+            [
+              78.695,
+              10.8645
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "BLD-10",
+        "name": "Mambalasalai Commercial & Transport Sector",
+        "type": "Commercial Corridor",
+        "height": 9.0,
+        "render_height": 9.0,
+        "ground_elevation_m": 76.0,
+        "occupancy": "Commercial / Retail Corridor",
+        "risk_category": "SAFE",
+        "estimated_depth_m": 0.0
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.6945,
+              10.854
+            ],
+            [
+              78.6965,
+              10.854
+            ],
+            [
+              78.6965,
+              10.856
+            ],
+            [
+              78.6945,
+              10.856
+            ],
+            [
+              78.6945,
+              10.854
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "type": "FeatureCollection",
+  "name": "Srirangam Hydrological Monitoring Stations",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ST-01",
+        "name": "Mukkombu (Upper Anicut) Regulator",
+        "type": "Inflow Division Barrage",
+        "status": "OPERATIONAL GAUGE",
+        "ground_elevation_m": 80.0,
+        "warning_stage_m": 72.5,
+        "danger_stage_m": 74.0
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.663,
+          10.872
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ST-02",
+        "name": "Srirangam Amma Mandapam Ghat",
+        "type": "Cauvery South Hydrometric Station",
+        "status": "ACTIVE SENSOR POINT",
+        "ground_elevation_m": 74.0,
+        "warning_stage_m": 72.0,
+        "danger_stage_m": 73.5
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.692,
+          10.8568
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ST-03",
+        "name": "Kollidam Road Bridge & Regulator",
+        "type": "North Flood Carrier Discharge Station",
+        "status": "ACTIVE SENSOR POINT",
+        "ground_elevation_m": 73.0,
+        "warning_stage_m": 71.5,
+        "danger_stage_m": 73.0
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.697,
+          10.8785
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ST-04",
+        "name": "Grand Anicut (Kallanai) Reference",
+        "type": "Downstream Delta Division",
+        "status": "REFERENCE BARRAGE",
+        "ground_elevation_m": 65.0,
+        "warning_stage_m": 69.5,
+        "danger_stage_m": 71.0
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          78.745,
+          10.85
+        ]
+      }
+    }
+  ]
+}

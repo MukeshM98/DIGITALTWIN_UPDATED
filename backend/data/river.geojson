@@ -1,0 +1,122 @@
+{
+  "type": "FeatureCollection",
+  "name": "Srirangam Island Fluvial Corridors",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "RIV-01",
+        "name": "Cauvery (Kaveri) River",
+        "role": "Southern Island Fluvial Boundary",
+        "bed_elevation_m": 74.0,
+        "data_status": "Hydrographic Reference Channel"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.663,
+            10.8655
+          ],
+          [
+            78.672,
+            10.86
+          ],
+          [
+            78.681,
+            10.8572
+          ],
+          [
+            78.69,
+            10.8568
+          ],
+          [
+            78.693,
+            10.857
+          ],
+          [
+            78.7,
+            10.8582
+          ],
+          [
+            78.71,
+            10.856
+          ],
+          [
+            78.722,
+            10.8525
+          ],
+          [
+            78.735,
+            10.849
+          ],
+          [
+            78.748,
+            10.845
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "RIV-02",
+        "name": "Kollidam (Coleroon) River",
+        "role": "Northern Island Flood Carrier Channel",
+        "bed_elevation_m": 76.0,
+        "data_status": "Hydrographic Reference Channel"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            78.661,
+            10.887
+          ],
+          [
+            78.67,
+            10.885
+          ],
+          [
+            78.68,
+            10.8825
+          ],
+          [
+            78.689,
+            10.8805
+          ],
+          [
+            78.697,
+            10.8785
+          ],
+          [
+            78.707,
+            10.8755
+          ],
+          [
+            78.718,
+            10.872
+          ],
+          [
+            78.73,
+            10.8675
+          ],
+          [
+            78.742,
+            10.863
+          ],
+          [
+            78.749,
+            10.86
+          ]
+        ]
+      }
+    }
+  ]
+}

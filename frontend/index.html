@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FloodSense DT | 3D Disaster Response Digital Twin — Srirangam Island</title>
+  <meta name="description" content="AI-Powered 3D Disaster Response Digital Twin for Srirangam Island, Tiruchirappalli, Tamil Nadu, featuring terrain-aware hydrological inundation and 3D camera controls.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" rel="stylesheet">
+  <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+  <!-- Header Bar -->
+  <header>
+    <div class="brand">
+      <b>FS</b>
+      <div>
+        <strong>FLOODSENSE DT</strong>
+        <small>3D DISASTER RESPONSE DIGITAL TWIN</small>
+      </div>
+    </div>
+    <div class="context">
+      <span class="pulse-dot">●</span> GEOSPATIAL 3D DIGITAL TWIN / SRIRANGAM ISLAND · TIRUCHIRAPPALLI
+    </div>
+    <div class="header-actions">
+      <button id="reset" title="Reset camera to Srirangam overview">↺ Reset Overview</button>
+    </div>
+  </header>
+
+  <!-- Main 3-Column Layout -->
+  <main>
+    <!-- Left Sidebar: Controls & Scenarios -->
+    <aside class="panel left-panel">
+      <small class="eyebrow">STUDY REGION</small>
+      <h1>Flood Risk<br><em>Intelligence</em></h1>
+      <p>Interactive 3D terrain-aware digital twin for Srirangam Island, bounded by the Kaveri and Kollidam rivers.</p>
+
+      <!-- Location Card -->
+      <div class="place">
+        <b>⌖</b>
+        <div>
+          <strong>Srirangam Island</strong>
+          <small>Tiruchirappalli, Tamil Nadu, India · 10.865°N, 78.693°E</small>
+        </div>
+      </div>
+
+      <!-- Live Meteorological Feed -->
+      <div class="weather-card" id="weatherCard">
+        <div class="weather-header">
+          <small>METEOROLOGICAL CONDITIONS</small>
+          <span class="weather-badge" id="weatherSource">LIVE</span>
+        </div>
+        <div class="weather-body">
+          <span class="temp" id="tempVal">29.0°C</span>
+          <div class="weather-details">
+            <span id="rainVal">Rain: 0.0 mm/h</span>
+            <span id="humidVal">Humidity: 75%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scenario Controls -->
+      <div class="section">
+        <span>SCENARIO CONTROLS</span>
+        <label class="demo-tag">TERRAIN-AWARE</label>
+      </div>
+
+      <label class="field" for="rain">
+        Rainfall intensity <b id="rainLabel">80 mm / 24h</b>
+      </label>
+      <input id="rain" type="range" min="10" max="250" step="5" value="80">
+      <div class="scale">
+        <span>10 mm (Dry)</span>
+        <span>120 mm</span>
+        <span>250 mm (Extreme)</span>
+      </div>
+
+      <label class="field" for="scenario">Scenario profile</label>
+      <select id="scenario">
+        <option value="rainfall">Heavy Monsoon Rainfall (80 mm)</option>
+        <option value="rapid-rise">Rapid River Rise (Mukkombu Surge)</option>
+        <option value="breach">Kollidam Embankment Breach</option>
+      </select>
+
+      <button id="update" class="primary">
+        <span class="btn-text">▶ Update Simulation</span>
+        <span class="spinner" hidden></span>
+      </button>
+
+      <!-- Map & Terrain Layers -->
+      <div class="section">
+        <span>MAP & TERRAIN CONTROLS</span>
+      </div>
+
+      <div class="exaggeration-box">
+        <label class="field" for="exaggeration">
+          3D Terrain Exaggeration <b id="exagLabel">1.5x</b>
+        </label>
+        <input id="exaggeration" type="range" min="1.0" max="2.5" step="0.1" value="1.5">
+        <small class="hint">Visualization setting only; does not alter physical flood depths.</small>
+      </div>
+
+      <label class="layer">
+        <span>3D Elevation Terrain</span>
+        <input id="terrain" type="checkbox" checked>
+      </label>
+      <label class="layer">
+        <span>3D Extruded Buildings</span>
+        <input id="buildings" type="checkbox" checked>
+      </label>
+      <label class="layer">
+        <span>Terrain-Aware Flood Extent</span>
+        <input id="flood" type="checkbox" checked>
+      </label>
+      <label class="layer">
+        <span>Depth Color Ramp & Contours</span>
+        <input id="depthLayer" type="checkbox" checked>
+      </label>
+      <label class="layer">
+        <span>River Corridors & Monitoring Gauges</span>
+        <input id="river" type="checkbox" checked>
+      </label>
+      <label class="layer">
+        <span>Vulnerable Infrastructure Markers</span>
+        <input id="riskZones" type="checkbox" checked>
+      </label>
+
+      <!-- Technical Disclaimer -->
+      <div class="warning">
+        <i>ⓘ</i>
+        <div>
+          <b>Hydrological Model Notice</b>
+          <p>Flood extents are computed via an 8-neighbor surface elevation connectivity algorithm from river seeds using SRTM 30m DEM. Not an official hydrodynamic warning.</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center Section: 3D Map & Camera Controls -->
+    <section class="map-container">
+      <div id="map"></div>
+
+      <!-- Top Overlay Controls -->
+      <div class="map-top">
+        <div class="digital-twin-tag">
+          <span class="pulse-dot">●</span> DIGITAL TWIN VIEW <b id="modeBadge">3D</b>
+        </div>
+        <div class="view-switch">
+          <button id="tilt" class="chosen">3D TILT</button>
+          <button id="flat">2D VIEW</button>
+        </div>
+      </div>
+
+      <!-- Dedicated 3D Camera Controls Toolbar -->
+      <div class="camera-toolbar" id="cameraToolbar" title="3D Camera Controls">
+        <div class="camera-toolbar-label">CAMERA CONTROLS</div>
+        <div class="camera-btn-group">
+          <button id="camRotLeft" title="Rotate Horizontally Left (CCW)">↺ Rot L</button>
+          <button id="camRotRight" title="Rotate Horizontally Right (CW)">↻ Rot R</button>
+        </div>
+        <div class="camera-btn-group">
+          <button id="camTiltUp" title="Tilt Camera Up towards Horizon">▲ Tilt Up</button>
+          <button id="camTiltDown" title="Tilt Camera Down towards Top-Down">▼ Tilt Down</button>
+        </div>
+        <div class="camera-btn-group">
+          <button id="camZoomIn" title="Zoom In">+</button>
+          <button id="camZoomOut" title="Zoom Out">−</button>
+        </div>
+        <div class="camera-btn-group">
+          <button id="camNorth" title="Align North-Up">⬆ North</button>
+          <button id="camReset" title="Reset View to Srirangam Overview">⌖ Reset</button>
+        </div>
+      </div>
+
+      <!-- Live Terrain & Depth Pointer Inspector Chip -->
+      <div class="terrain-inspector" id="terrainInspector">
+        <div class="inspector-icon">⌖</div>
+        <div class="inspector-info">
+          <strong id="inspectorElev">Elevation: -- m MSL</strong>
+          <small id="inspectorCoord">Move mouse or click terrain to inspect</small>
+        </div>
+      </div>
+
+      <!-- Timeline & Flood Animation Controller Bar -->
+      <div class="map-timeline" id="mapTimeline">
+        <div class="timeline-controls">
+          <button id="playBtn" class="anim-btn" title="Play flood spreading animation">▶ Play</button>
+          <button id="pauseBtn" class="anim-btn" title="Pause animation" disabled>⏸ Pause</button>
+          <button id="resetAnimBtn" class="anim-btn" title="Reset timeline">⏮ Reset</button>
+          <span class="timeline-time-badge" id="timelineTime">t = 0.0h / 24h</span>
+        </div>
+        <div class="timeline-slider-box">
+          <input id="timelineSlider" type="range" min="0" max="5" step="1" value="0">
+          <div class="timeline-ticks">
+            <span>0h (Dry)</span>
+            <span>3h</span>
+            <span>6h (Rise)</span>
+            <span>12h (Peak)</span>
+            <span>18h</span>
+            <span>24h (Drain)</span>
+          </div>
+        </div>
+        <div class="speed-selector">
+          <button class="speed-btn active" data-speed="1">1x</button>
+          <button class="speed-btn" data-speed="2">2x</button>
+          <button class="speed-btn" data-speed="4">4x</button>
+        </div>
+      </div>
+
+      <!-- Bottom Map Legend Bar -->
+      <div class="map-bottom">
+        <div class="legend-row">
+          <span class="legend-item"><i class="swatch depth-low"></i> Minor (0–0.5m)</span>
+          <span class="legend-item"><i class="swatch depth-mod"></i> Moderate (0.5–1.5m)</span>
+          <span class="legend-item"><i class="swatch depth-high"></i> Severe (&gt;1.5m)</span>
+          <span class="legend-item"><i class="swatch river-line"></i> Kaveri / Kollidam River</span>
+          <span class="legend-item"><i class="swatch station-dot"></i> Gauging Station</span>
+        </div>
+        <small id="mapStatus">TERRAIN + VECTOR MAP ACTIVE</small>
+      </div>
+
+      <!-- Error Overlay -->
+      <div id="mapError" hidden>
+        <strong>Connection Notice:</strong> Live map tiles or backend service is unreachable. Operating with cached data.
+      </div>
+    </section>
+
+    <!-- Right Sidebar: Outputs, Simulation Insights & Buildings -->
+    <aside class="panel right-panel">
+      <small class="eyebrow">SCENARIO OUTPUT</small>
+      <div class="risk-head">
+        <h2>Risk Snapshot</h2>
+        <b id="level" class="tag moderate">MODERATE</b>
+      </div>
+
+      <!-- Risk Score Bar -->
+      <div class="score">
+        <span>Illustrative Risk Index</span>
+        <strong id="score">44<small>/100</small></strong>
+        <div class="bar">
+          <i id="bar" style="width: 44%"></i>
+        </div>
+        <small><span>LOW</span><span>MODERATE</span><span>HIGH</span></small>
+      </div>
+
+      <!-- Dynamic Metric Cards -->
+      <div class="metrics">
+        <div>
+          <small>RAINFALL INPUT</small>
+          <strong id="rainMetric">80 <i>mm</i></strong>
+          <small>24-hour accumulation</small>
+        </div>
+        <div>
+          <small>PEAK WATER STAGE</small>
+          <strong id="water">71.6 <i>m</i></strong>
+          <small id="waterDiff">+2.1 m over riverbed</small>
+        </div>
+        <div>
+          <small>INUNDATED AREA</small>
+          <strong id="inundatedArea">53.7 <i>km²</i></strong>
+          <small>Connected lowlands</small>
+        </div>
+        <div>
+          <small>AFFECTED STRUCTURES</small>
+          <strong id="affectedBld">3 <i>/ 10</i></strong>
+          <small>Vulnerability estimate</small>
+        </div>
+      </div>
+
+      <!-- Simulation Insights Panel (Section 7) -->
+      <div class="insights-panel">
+        <div class="insights-header" id="insightsToggle">
+          <span>SIMULATION INSIGHTS</span>
+          <b id="insightsArrow">▼</b>
+        </div>
+        <div class="insights-content" id="insightsContent">
+          <div class="insight-row">
+            <span>Water-Surface Elevation (WSE):</span>
+            <b id="insWse">71.6 m MSL</b>
+          </div>
+          <div class="insight-row">
+            <span>Target Study Elevation:</span>
+            <b id="insGround">64.0 m – 82.0 m MSL</b>
+          </div>
+          <div class="insight-row">
+            <span>Highest Risk Sector:</span>
+            <b id="insSector">Melur Lowlands & North Kollidam</b>
+          </div>
+          <div class="insight-row">
+            <span>Hydraulic Calculation:</span>
+            <code class="formula">Water Depth = max(0, WSE − Ground Elev)</code>
+          </div>
+          <p class="insight-desc">
+            Water depth is calculated only where surface water is hydrologically connected to river channels via an 8-neighbor graph traversal, preventing isolated inland depressions from falsely flooding.
+          </p>
+          <small class="insight-datum">Vertical Datum: EGM96 / MSL · DEM: SRTM 30m Resolution (~19m raster cell)</small>
+        </div>
+      </div>
+
+      <!-- Key Infrastructure & Building Vulnerability -->
+      <div class="section">
+        <span>KEY INFRASTRUCTURE IMPACT</span>
+      </div>
+      <div id="buildingList" class="building-list">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Hydrological Monitoring Points -->
+      <div class="section">
+        <span>MONITORING GAUGING STATIONS</span>
+      </div>
+      <div id="stations" class="station-list">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Context Insight Card -->
+      <div class="section">
+        <span>SITUATION INTERPRETATION</span>
+      </div>
+      <div class="insight">
+        <b>↗</b>
+        <div>
+          <strong id="insightTitle">Moderate Flood Risk Active</strong>
+          <small id="insight">Water levels overtop the lowest sections of the Cauvery and Kollidam banks. Elevated central temple grounds remain safe above flood stage.</small>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div>
+      FLOODSENSE DT · 3D DIGITAL TWIN 
+      <span>Srirangam Island, Tiruchirappalli, Tamil Nadu</span>
+    </div>
+    <div>
+      Map data © OpenStreetMap contributors · SRTM 30m Elevation Tiles · OpenFreeMap
+    </div>
+    <b>RESEARCH & DEMONSTRATION PROTOTYPE · NOT FOR EMERGENCY DECISIONS</b>
+  </footer>
+
+  <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
