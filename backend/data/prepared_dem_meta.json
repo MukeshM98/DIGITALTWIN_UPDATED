@@ -1,0 +1,26 @@
+{
+  "bounds": {
+    "west": 78.67,
+    "south": 10.845,
+    "east": 78.72,
+    "north": 10.9
+  },
+  "grid_shape": [
+    320,
+    320
+  ],
+  "crs": "EPSG:4326",
+  "vertical_datum": "EGM96 assumed from global terrain source; unverified locally",
+  "units": "metres",
+  "resolution_m": 17.081521036101105,
+  "source_resolution_m": 38,
+  "source": "Mapzen Terrain Tiles, zoom 12; mixed-source DEM, not bathymetry",
+  "terrain_tile_bounds": [
+    2943,
+    1923,
+    2943,
+    1923
+  ],
+  "min_elevation_m": 57.0,
+  "max_elevation_m": 87.0
+}

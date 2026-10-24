@@ -1,421 +1,138 @@
-"""
-FloodSense DT — Hydrological Simulation Engine
-Terrain-Aware Inundation Modeling for Srirangam Island, Tiruchirappalli, Tamil Nadu
-
-Features:
-- Real SRTM DEM elevation grid loading (512x512 matrix, ~19m cell resolution)
-- River channel seed extraction (Cauvery and Kollidam corridors)
-- Scenario-based Water Surface Elevation (WSE) computation
-- 8-neighbor spatial flood-connectivity algorithm (BFS flood propagation)
-- Prevents disconnected low-lying depression inundation
-- Timestep simulation progression (t=0h to t=24h)
-- Building vulnerability and depth-based damage risk classification
-- GeoJSON polygonization for 3D map rendering
-"""
-
+"""Educational connected-stage inundation; not a rainfall-runoff or forecasting model."""
 import json
+import math
+from collections import deque
+from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Any, Tuple, Optional
 import numpy as np
+from shapely import contains_xy
+from shapely.geometry import shape, box, mapping
+from shapely.ops import unary_union
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
+DATA_DIR = Path(__file__).resolve().parent / 'data'
+GEO_DIR = DATA_DIR.parents[1] / 'frontend/data'
+BASE_STAGE = 69.5  # Illustrative baseline, NOT a measured river gauge.
 
 class FloodSimulationEngine:
-    def __init__(self, dem_path: Optional[Path] = None, meta_path: Optional[Path] = None):
-        self.dem_path = dem_path or (DATA_DIR / "srirangam_dem.npz")
-        self.meta_path = meta_path or (DATA_DIR / "srirangam_dem_meta.json")
-        self.buildings_path = DATA_DIR / "buildings.geojson"
-        self.river_path = DATA_DIR / "river.geojson"
-        
-        self.elevation_grid: Optional[np.ndarray] = None
-        self.meta: Dict[str, Any] = {}
-        self.buildings: List[Dict[str, Any]] = []
-        self.rivers: List[Dict[str, Any]] = []
-        
+    def __init__(self, dem_path=None, meta_path=None):
+        self.dem_path = dem_path or DATA_DIR/'prepared_dem.npz'
+        self.meta_path = meta_path or DATA_DIR/'prepared_dem_meta.json'
         self.load_data()
 
-    def load_data(self) -> None:
-        """Loads elevation grid, metadata, river vectors, and building footprints."""
-        if self.dem_path.exists():
-            npz = np.load(self.dem_path)
-            self.elevation_grid = npz["elevation"]
-        else:
-            # Fallback synthetic grid for Srirangam if DEM file is missing
-            self.elevation_grid = np.full((512, 512), 72.0, dtype=np.float32)
+    def load_data(self):
+        self.elevation_grid = np.load(self.dem_path)['elevation']
+        self.meta = json.loads(self.meta_path.read_text())
+        self.buildings = json.loads((GEO_DIR/'buildings-osm.geojson').read_text())['features']
+        self.rivers = json.loads((DATA_DIR/'river.geojson').read_text())['features'] # legacy references only
+        self.water = shape(json.loads((GEO_DIR/'water.geojson').read_text())['features'][0]['geometry'])
+        h,w=self.elevation_grid.shape; b=self.meta['bounds']
+        self.lons=b['west']+(np.arange(w)+.5)/w*(b['east']-b['west'])
+        self.lats=b['north']-(np.arange(h)+.5)/h*(b['north']-b['south'])
+        self.water_mask=contains_xy(self.water,self.lons[None,:],self.lats[:,None])
+        self.cell_area=(b['east']-b['west'])*111320*math.cos(math.radians((b['north']+b['south'])/2))/w*(b['north']-b['south'])*111320/h
+        self.building_cells=[]
+        for f in self.buildings:
+            geom=shape(f['geometry']); west,south,east,north=geom.bounds
+            r0,c0=self.coord_to_grid(west,north); r1,c1=self.coord_to_grid(east,south)
+            rr,cc=np.mgrid[r0:r1+1,c0:c1+1]
+            mask=contains_xy(geom,self.lons[cc],self.lats[rr])
+            cells=list(zip(rr[mask].tolist(),cc[mask].tolist()))
+            if not cells:
+                p=geom.representative_point(); cells=[self.coord_to_grid(p.x,p.y)]
+            self.building_cells.append(cells)
 
-        if self.meta_path.exists():
-            with open(self.meta_path, "r", encoding="utf-8") as f:
-                self.meta = json.load(f)
-        else:
-            self.meta = {
-                "bounds": {"west": 78.662109, "south": 10.833306, "east": 78.750000, "north": 10.919618},
-                "grid_shape": [512, 512],
-                "resolution_m": 19.11
-            }
+    def inside(self,lon,lat):
+        b=self.meta['bounds']; return b['west']<=lon<=b['east'] and b['south']<=lat<=b['north']
 
-        if self.buildings_path.exists():
-            with open(self.buildings_path, "r", encoding="utf-8") as f:
-                self.buildings = json.load(f).get("features", [])
+    def coord_to_grid(self,lon,lat):
+        b=self.meta['bounds']; h,w=self.elevation_grid.shape
+        return max(0,min(h-1,int((b['north']-lat)/(b['north']-b['south'])*h))),max(0,min(w-1,int((lon-b['west'])/(b['east']-b['west'])*w)))
 
-        if self.river_path.exists():
-            with open(self.river_path, "r", encoding="utf-8") as f:
-                self.rivers = json.load(f).get("features", [])
+    def grid_to_coord(self,row,col):
+        b=self.meta['bounds']; h,w=self.elevation_grid.shape
+        return b['west']+(col+.5)/w*(b['east']-b['west']),b['north']-(row+.5)/h*(b['north']-b['south'])
 
-    def coord_to_grid(self, lon: float, lat: float) -> Tuple[int, int]:
-        """Converts geographic longitude and latitude to (row, col) grid indices."""
-        b = self.meta["bounds"]
-        h, w = self.elevation_grid.shape
-        col = int((lon - b["west"]) / (b["east"] - b["west"]) * w)
-        row = int((b["north"] - lat) / (b["north"] - b["south"]) * h)
-        return max(0, min(h - 1, row)), max(0, min(w - 1, col))
+    def get_elevation(self,lon,lat):
+        if not self.inside(lon,lat): raise ValueError('Outside prepared terrain coverage')
+        value=float(self.elevation_grid[self.coord_to_grid(lon,lat)])
+        if not np.isfinite(value): raise ValueError('Terrain no-data cell')
+        return value
 
-    def grid_to_coord(self, row: int, col: int) -> Tuple[float, float]:
-        """Converts grid (row, col) to geographic (lon, lat)."""
-        b = self.meta["bounds"]
-        h, w = self.elevation_grid.shape
-        lon = b["west"] + (col + 0.5) / w * (b["east"] - b["west"])
-        lat = b["north"] - (row + 0.5) / h * (b["north"] - b["south"])
-        return round(lon, 6), round(lat, 6)
+    def get_river_seeds(self):
+        rivers=unary_union([shape(f['geometry']) for f in json.loads((GEO_DIR/'rivers-osm.geojson').read_text())['features']])
+        mask=contains_xy(rivers,self.lons[None,:],self.lats[:,None])
+        return list(zip(*np.where(mask)))
 
-    def get_elevation(self, lon: float, lat: float) -> float:
-        """Returns ground elevation in metres MSL for a given coordinate."""
-        r, c = self.coord_to_grid(lon, lat)
-        return float(self.elevation_grid[r, c])
+    def compute_wse(self,rainfall_mm,scenario,timestep_ratio,peak_rise_m=None):
+        if scenario == 'dry':
+            return float(np.nanmin(self.elevation_grid)) - 1
+        # Legacy presets remain backward compatible, but are not a calibrated model.
+        rise=peak_rise_m if peak_rise_m is not None else (rainfall_mm/60)**1.15*1.5*{'rainfall':1,'rapid-rise':1.25,'breach':1.45}.get(scenario,1)
+        return round(BASE_STAGE+rise*math.sin(math.pi*timestep_ratio),2)
 
-    def get_river_seeds(self) -> List[Tuple[int, int]]:
-        """Extracts grid cells along the Cauvery and Kollidam river courses as flood seeds."""
-        seeds = []
-        for feature in self.rivers:
-            coords = feature["geometry"]["coordinates"]
-            for i in range(len(coords) - 1):
-                p1 = coords[i]
-                p2 = coords[i + 1]
-                # Interpolate points along river segments
-                steps = 15
-                for s in range(steps + 1):
-                    lon = p1[0] + (p2[0] - p1[0]) * (s / steps)
-                    lat = p1[1] + (p2[1] - p1[1]) * (s / steps)
-                    r, c = self.coord_to_grid(lon, lat)
-                    seeds.append((r, c))
-        # Remove duplicates
-        return list(set(seeds))
-
-    def compute_wse(self, rainfall_mm: float, scenario: str, timestep_ratio: float) -> float:
-        """
-        Computes Water Surface Elevation (WSE in metres MSL) based on:
-        - Base river stage: ~69.5m MSL
-        - Rainfall runoff contribution (SCS Curve Number adaptation for Srirangam delta)
-        - Scenario surge multipliers:
-          * rainfall: baseline precipitation runoff
-          * rapid-rise: upstream Mukkombu barrage discharge surge
-          * breach: Kollidam embankment breach scenario
-        - Timestep progression factor (hydrograph rise and fall)
-        """
-        base_stage = 69.5  # Normal dry-season river water level in Srirangam
-
-        # Scenario multiplier for river surge
-        multiplier = {
-            "rainfall": 1.0,
-            "rapid-rise": 1.25,
-            "breach": 1.45
-        }.get(scenario, 1.0)
-
-        # Non-linear runoff stage rise: P in mm converted to stage increase in metres
-        # Zero rainfall yields zero rainfall stage rise
-        if rainfall_mm <= 0:
-            stage_rise = 0.0
-        else:
-            # 50mm -> ~1.2m rise, 100mm -> ~2.8m rise, 200mm -> ~5.2m rise
-            stage_rise = (rainfall_mm / 60.0) ** 1.15 * 1.5 * multiplier
-
-        if scenario == "rapid-rise":
-            # Upstream inflow adds base surge even at lower local rain
-            stage_rise += 1.8 * timestep_ratio
-
-        # Hydrograph curve: peaks around timestep_ratio ~ 0.6 to 0.8
-        # Shape: sin wave from 0 to pi
-        hydrograph = np.sin(timestep_ratio * np.pi * 0.85) if timestep_ratio > 0 else 0.0
-        current_wse = base_stage + stage_rise * hydrograph
-        return round(float(current_wse), 2)
-
-    def run_connectivity_flood(
-        self,
-        wse: float,
-        river_seeds: List[Tuple[int, int]],
-        max_distance_cells: int = 120
-    ) -> np.ndarray:
-        """
-        Computes connected inundation using 8-connected Breadth-First Search (BFS).
-        Only cells hydrologically connected to the river channel where elevation <= WSE
-        are marked as inundated. Disconnected depressions are rejected.
-        
-        Returns depth_grid where 0 = dry/disconnected, >0 = water depth in metres.
-        """
-        h, w = self.elevation_grid.shape
-        depth_grid = np.zeros((h, w), dtype=np.float32)
-        
-        # If water surface elevation is below the minimum riverbed, no overbank flooding occurs
-        if wse <= 69.0 or not river_seeds:
-            return depth_grid
-
-        visited = np.zeros((h, w), dtype=bool)
-        from collections import deque
-        queue = deque()
-
-        # Seed with river channel cells that are below WSE
-        for r, c in river_seeds:
-            if 0 <= r < h and 0 <= c < w:
-                if self.elevation_grid[r, c] <= wse:
-                    visited[r, c] = True
-                    depth = max(0.0, wse - self.elevation_grid[r, c])
-                    depth_grid[r, c] = depth
-                    queue.append((r, c, 0))
-
-        # 8-connected neighbors
-        neighbors = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
-
+    def run_connectivity_flood(self,wse,river_seeds,max_distance_cells=None):
+        h,w=self.elevation_grid.shape
+        wet=np.isfinite(self.elevation_grid)&(self.elevation_grid<wse)
+        visited=np.zeros((h,w),bool); queue=deque()
+        for r,c in river_seeds:
+            if 0<=r<h and 0<=c<w and wet[r,c] and not visited[r,c]:
+                visited[r,c]=True; queue.append((r,c,0))
+        # Four neighbours prevent diagonal leakage across barriers.
         while queue:
-            r, c, dist = queue.popleft()
-            if dist >= max_distance_cells:
-                continue
+            r,c,d=queue.popleft()
+            if max_distance_cells is not None and d>=max_distance_cells: continue
+            for nr,nc in ((r-1,c),(r+1,c),(r,c-1),(r,c+1)):
+                if 0<=nr<h and 0<=nc<w and wet[nr,nc] and not visited[nr,nc]:
+                    visited[nr,nc]=True; queue.append((nr,nc,d+1))
+        return np.where(visited,wse-self.elevation_grid,0).astype(np.float32)
 
-            for dr, dc in neighbors:
-                nr, nc = r + dr, c + dc
-                if 0 <= nr < h and 0 <= nc < w and not visited[nr, nc]:
-                    ground_elev = self.elevation_grid[nr, nc]
-                    if ground_elev <= wse:
-                        visited[nr, nc] = True
-                        depth = max(0.0, wse - ground_elev)
-                        depth_grid[nr, nc] = depth
-                        queue.append((nr, nc, dist + 1))
+    def raster_to_geojson_polygons(self,depth_grid,wse,step_idx,time_h):
+        h,w=depth_grid.shape; b=self.meta['bounds']
+        classes=np.where(depth_grid>1.5,3,np.where(depth_grid>.5,2,np.where(depth_grid>.05,1,0)))
+        features=[]
+        for tier,name in ((1,'low'),(2,'moderate'),(3,'high')):
+            rects=[]
+            for r in range(h):
+                edges=np.diff(np.pad((classes[r]==tier).astype(int),(1,1)))
+                for c0,c1 in zip(np.where(edges==1)[0],np.where(edges==-1)[0]):
+                    rects.append(box(b['west']+c0/w*(b['east']-b['west']),b['north']-(r+1)/h*(b['north']-b['south']),b['west']+c1/w*(b['east']-b['west']),b['north']-r/h*(b['north']-b['south'])))
+            if rects:
+                features.append({'type':'Feature','properties':{'severity':name,'depth_m':round(float(depth_grid[classes==tier].mean()),2),'wse_m':wse},'geometry':mapping(unary_union(rects))})
+        values=depth_grid[depth_grid>.05]
+        return {'type':'FeatureCollection','properties':{'step':step_idx,'time_hours':time_h,'wse_m':wse,'flooded_cells':int(len(values)),'inundated_sqkm':round(len(values)*self.cell_area/1e6,3),'mean_depth_m':round(float(values.mean()),2) if len(values) else 0,'max_depth_m':round(float(values.max()),2) if len(values) else 0},'features':features}
 
-        return depth_grid
+    def assess_building_impact(self,wse,depth_grid=None):
+        if depth_grid is None: depth_grid=self.run_connectivity_flood(wse,self.get_river_seeds())
+        impacts=[]; counts=dict(safe=0,minor=0,moderate=0,severe=0)
+        for f,cells in zip(self.buildings,self.building_cells):
+            p=f['properties']; depth=max(float(depth_grid[r,c]) for r,c in cells)
+            elev=float(np.nanmin([self.elevation_grid[r,c] for r,c in cells]))
+            category='severe' if depth>1.5 else 'moderate' if depth>.5 else 'minor' if depth>.05 else 'safe'
+            counts[category]+=1
+            impacts.append({'id':p['id'],'name':p['name'],'type':p['type'],'height_m':p['height'],'height_source':p['height_source'],'ground_elevation_m':round(elev,2),'water_depth_m':round(depth,2),'risk_category':category.upper()})
+        return len(impacts)-counts['safe'],impacts,counts
 
-    def raster_to_geojson_polygons(self, depth_grid: np.ndarray, wse: float, step_idx: int, time_h: float) -> Dict[str, Any]:
-        """
-        Converts the inundated depth grid into simplified GeoJSON polygons categorized
-        by severity tiers:
-        - Low (0.05m - 0.5m)
-        - Moderate (0.5m - 1.5m)
-        - High (> 1.5m)
-        """
-        h, w = depth_grid.shape
-        b = self.meta["bounds"]
-        cell_res = self.meta["resolution_m"]
-        
-        # Subsample grid for lightweight vector transfer (4x downsampling -> 128x128)
-        downsample = 4
-        sub_depth = depth_grid[::downsample, ::downsample]
-        sh, sw = sub_depth.shape
-        
-        features = []
-        
-        # Inundation mask
-        flooded_mask = sub_depth > 0.05
-        flooded_count = int(np.count_nonzero(depth_grid > 0.05))
-        inundated_sqkm = round(flooded_count * (cell_res * cell_res) / 1e6, 3)
-        
-        if flooded_count == 0:
-            return {
-                "type": "FeatureCollection",
-                "properties": {
-                    "step": step_idx,
-                    "time_hours": time_h,
-                    "wse_m": wse,
-                    "flooded_cells": 0,
-                    "inundated_sqkm": 0.0,
-                    "mean_depth_m": 0.0,
-                    "max_depth_m": 0.0,
-                    "severity": "safe"
-                },
-                "features": []
-            }
+    @lru_cache(maxsize=8)
+    def depth_at_stage(self,wse):
+        return self.run_connectivity_flood(wse,self.get_river_seeds())
 
-        valid_depths = depth_grid[depth_grid > 0.05]
-        mean_depth = round(float(valid_depths.mean()), 2) if len(valid_depths) > 0 else 0.0
-        max_depth = round(float(valid_depths.max()), 2) if len(valid_depths) > 0 else 0.0
+    @lru_cache(maxsize=8)
+    def simulate(self,rainfall_mm_24h,scenario,peak_rise_m=None):
+        frames=[]; peak=BASE_STAGE; peak_depth=None
+        for idx,hour in enumerate([0.,3.,6.,12.,18.,24.]):
+            wse=self.compute_wse(rainfall_mm_24h,scenario,hour/24,peak_rise_m)
+            depth=self.depth_at_stage(wse).copy()
+            depth[self.water_mask]=0 # Baseline water is a distinct map layer.
+            frame=self.raster_to_geojson_polygons(depth,wse,idx,hour)
+            count,impacts,_=self.assess_building_impact(wse,depth)
+            frame['properties']['affected_buildings']=count
+            # Sparse state: absent buildings have zero connected depth.
+            frame['impacts']={p['id']:p['water_depth_m'] for p in impacts if p['water_depth_m']>.05}
+            frames.append(frame)
+            if peak_depth is None or wse>=peak: peak=wse; peak_depth=depth
+        count,impacts,tiers=self.assess_building_impact(peak,peak_depth)
+        risk=round(100*count/max(1,len(self.buildings)))
+        return {'metadata':{'model':'Four-neighbour connected stage scenario','baseline_wse_m':BASE_STAGE,'vertical_datum':self.meta['vertical_datum'],'rainfall_stage_link':'None when peak_rise_m supplied; otherwise legacy illustrative preset, not calibrated','disclaimer':'Educational only; no validated forecast, surveyed banks, barriers or bathymetry'},'inputs':{'rainfall_mm_24h':rainfall_mm_24h,'scenario':scenario,'peak_rise_m':peak_rise_m},'summary':{'risk_index':risk,'risk_level':'HIGH' if risk>=65 else 'MODERATE' if risk>=35 else 'LOW','peak_wse_m':peak,'peak_water_level_change_m':round(peak-BASE_STAGE,2),'max_inundated_sqkm':max(f['properties']['inundated_sqkm'] for f in frames),'total_affected_buildings':count,'building_risk_breakdown':tiers,'highest_risk_sector':'Not assessed; no validated sector boundaries','timesteps_count':6},'building_impacts':[{k:p[k] for k in ('id','water_depth_m','risk_category')} for p in impacts if p['water_depth_m']>.05],'simulation_frames':frames}
 
-        # Cluster flooded blocks into rectangular quad polygons for fast client rendering
-        visited = np.zeros((sh, sw), dtype=bool)
-        
-        for r in range(sh):
-            for c in range(sw):
-                if flooded_mask[r, c] and not visited[r, c]:
-                    # Find width of continuous flooded segment
-                    c_end = c
-                    while c_end < sw and flooded_mask[r, c_end] and not visited[r, c_end]:
-                        c_end += 1
-                    
-                    # Mark visited
-                    visited[r, c:c_end] = True
-                    
-                    d_val = float(sub_depth[r, c])
-                    severity = "high" if d_val > 1.5 else "moderate" if d_val > 0.5 else "low"
-                    
-                    # Map to geographic coordinates
-                    orig_r1 = r * downsample
-                    orig_r2 = min(h, (r + 1) * downsample)
-                    orig_c1 = c * downsample
-                    orig_c2 = min(w, c_end * downsample)
-                    
-                    lon1 = b["west"] + orig_c1 / w * (b["east"] - b["west"])
-                    lon2 = b["west"] + orig_c2 / w * (b["east"] - b["west"])
-                    lat1 = b["north"] - orig_r2 / h * (b["north"] - b["south"])
-                    lat2 = b["north"] - orig_r1 / h * (b["north"] - b["south"])
-                    
-                    poly = [
-                        [round(lon1, 6), round(lat1, 6)],
-                        [round(lon2, 6), round(lat1, 6)],
-                        [round(lon2, 6), round(lat2, 6)],
-                        [round(lon1, 6), round(lat2, 6)],
-                        [round(lon1, 6), round(lat1, 6)]
-                    ]
-                    
-                    features.append({
-                        "type": "Feature",
-                        "properties": {
-                            "depth_m": round(d_val, 2),
-                            "severity": severity
-                        },
-                        "geometry": {
-                            "type": "Polygon",
-                            "coordinates": [poly]
-                        }
-                    })
+engine=FloodSimulationEngine()
 
-        overall_sev = "high" if max_depth > 1.5 else "moderate" if max_depth > 0.5 else "low"
-        
-        return {
-            "type": "FeatureCollection",
-            "properties": {
-                "step": step_idx,
-                "time_hours": time_h,
-                "wse_m": wse,
-                "flooded_cells": flooded_count,
-                "inundated_sqkm": inundated_sqkm,
-                "mean_depth_m": mean_depth,
-                "max_depth_m": max_depth,
-                "severity": overall_sev
-            },
-            "features": features
-        }
-
-    def assess_building_impact(self, wse: float) -> Tuple[int, List[Dict[str, Any]], Dict[str, int]]:
-        """
-        Assesses flood depth and risk for all designated buildings in Srirangam.
-        Thresholds (prototype damage classification):
-        - Safe: depth <= 0.05m
-        - Minor: 0.05m - 0.5m
-        - Moderate: 0.5m - 1.5m
-        - Severe: > 1.5m
-        """
-        affected_count = 0
-        impacts = []
-        counts_by_tier = {"safe": 0, "minor": 0, "moderate": 0, "severe": 0}
-
-        for bld in self.buildings:
-            props = bld["properties"]
-            elev = props.get("ground_elevation_m", 72.0)
-            depth = max(0.0, wse - elev)
-            
-            if depth > 1.5:
-                category = "severe"
-                counts_by_tier["severe"] += 1
-                affected_count += 1
-            elif depth > 0.5:
-                category = "moderate"
-                counts_by_tier["moderate"] += 1
-                affected_count += 1
-            elif depth > 0.05:
-                category = "minor"
-                counts_by_tier["minor"] += 1
-                affected_count += 1
-            else:
-                category = "safe"
-                counts_by_tier["safe"] += 1
-
-            impacts.append({
-                "id": props.get("id"),
-                "name": props.get("name"),
-                "type": props.get("type"),
-                "ground_elevation_m": elev,
-                "water_depth_m": round(depth, 2),
-                "risk_category": category.upper()
-            })
-
-        return affected_count, impacts, counts_by_tier
-
-    def simulate(self, rainfall_mm_24h: float, scenario: str) -> Dict[str, Any]:
-        """
-        Runs the full 6-step time progression simulation:
-        t = [0h, 3h, 6h, 12h, 18h, 24h]
-        """
-        river_seeds = self.get_river_seeds()
-        timesteps = [0.0, 3.0, 6.0, 12.0, 18.0, 24.0]
-        timestep_ratios = [0.0, 0.25, 0.55, 0.85, 0.95, 0.70] # hydrograph curve
-        
-        frames = []
-        max_inundated_sqkm = 0.0
-        peak_wse = 0.0
-        
-        for idx, (t_hours, ratio) in enumerate(zip(timesteps, timestep_ratios)):
-            wse = self.compute_wse(rainfall_mm_24h, scenario, ratio)
-            if wse > peak_wse:
-                peak_wse = wse
-                
-            depth_grid = self.run_connectivity_flood(wse, river_seeds)
-            geojson_frame = self.raster_to_geojson_polygons(depth_grid, wse, idx, t_hours)
-            
-            inundated_sqkm = geojson_frame["properties"]["inundated_sqkm"]
-            if inundated_sqkm > max_inundated_sqkm:
-                max_inundated_sqkm = inundated_sqkm
-                
-            frames.append(geojson_frame)
-
-        # Peak impact assessment
-        affected_buildings_count, building_impacts, counts_by_tier = self.assess_building_impact(peak_wse)
-        
-        # Risk index score (0 - 100)
-        risk_multiplier = {"rainfall": 1.0, "rapid-rise": 1.18, "breach": 1.32}.get(scenario, 1.0)
-        risk_index = min(98, max(5, int((rainfall_mm_24h / 2.3 + 10) * risk_multiplier)))
-        risk_level = "HIGH" if risk_index >= 65 else "MODERATE" if risk_index >= 35 else "LOW"
-
-        # Determine highest risk sector
-        if scenario == "breach" or rainfall_mm_24h >= 140:
-            highest_risk_sector = "Melur Lowlands & North Kollidam Embankment"
-        elif scenario == "rapid-rise" or rainfall_mm_24h >= 80:
-            highest_risk_sector = "Amma Mandapam Riverfront Ghats & Mambalasalai"
-        else:
-            highest_risk_sector = "Immediate Unprotected Riverbed Channels"
-
-        return {
-            "metadata": {
-                "study_area": "Srirangam Island, Tiruchirappalli, Tamil Nadu, India",
-                "center": [78.693, 10.865],
-                "crs": "EPSG:4326 (WGS84)",
-                "vertical_datum": "EGM96 / MSL (Metres)",
-                "dem_source": "SRTM 30m / Terrarium Elevation Raster",
-                "model": "8-Neighbor Surface Connectivity Elevation Inundation Engine",
-                "disclaimer": "Prototype hydrological digital twin for academic/disaster risk assessment demonstration."
-            },
-            "inputs": {
-                "rainfall_mm_24h": rainfall_mm_24h,
-                "scenario": scenario
-            },
-            "summary": {
-                "risk_index": risk_index,
-                "risk_level": risk_level,
-                "peak_wse_m": peak_wse,
-                "peak_water_level_change_m": round(peak_wse - 69.5, 2),
-                "max_inundated_sqkm": max_inundated_sqkm,
-                "total_affected_buildings": affected_buildings_count,
-                "building_risk_breakdown": counts_by_tier,
-                "highest_risk_sector": highest_risk_sector,
-                "timesteps_count": len(frames)
-            },
-            "building_impacts": building_impacts,
-            "simulation_frames": frames
-        }
-
-# Global singleton instance
-engine = FloodSimulationEngine()

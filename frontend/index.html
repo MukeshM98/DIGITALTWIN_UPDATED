@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FloodSense DT | 3D Disaster Response Digital Twin — Srirangam Island</title>
   <meta name="description" content="AI-Powered 3D Disaster Response Digital Twin for Srirangam Island, Tiruchirappalli, Tamil Nadu, featuring terrain-aware hydrological inundation and 3D camera controls.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <link href="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css" rel="stylesheet">
+  <link href="vendor/maplibre-gl.css" rel="stylesheet">
   <link href="styles.css" rel="stylesheet">
 </head>
 <body>
@@ -25,7 +22,7 @@
       <span class="pulse-dot">●</span> GEOSPATIAL 3D DIGITAL TWIN / SRIRANGAM ISLAND · TIRUCHIRAPPALLI
     </div>
     <div class="header-actions">
-      <button id="reset" title="Reset camera to Srirangam overview">↺ Reset Overview</button>
+      <button id="extent">Island extent</button><button id="reset" title="Reset camera to Srirangam overview">↺ Reset Overview</button>
     </div>
   </header>
 
@@ -50,13 +47,13 @@
       <div class="weather-card" id="weatherCard">
         <div class="weather-header">
           <small>METEOROLOGICAL CONDITIONS</small>
-          <span class="weather-badge" id="weatherSource">LIVE</span>
+          <span class="weather-badge" id="weatherSource">LOADING</span>
         </div>
         <div class="weather-body">
-          <span class="temp" id="tempVal">29.0°C</span>
+          <span class="temp" id="tempVal">—</span>
           <div class="weather-details">
-            <span id="rainVal">Rain: 0.0 mm/h</span>
-            <span id="humidVal">Humidity: 75%</span>
+            <span id="rainVal">Precipitation: —</span>
+            <span id="humidVal">Humidity: —</span>
           </div>
         </div>
       </div>
@@ -68,37 +65,41 @@
       </div>
 
       <label class="field" for="rain">
-        Rainfall intensity <b id="rainLabel">80 mm / 24h</b>
+        Rainfall accumulation (context) <b id="rainLabel">80 mm / 24h</b>
       </label>
-      <input id="rain" type="range" min="10" max="250" step="5" value="80">
+      <input id="rain" type="range" min="0" max="250" step="5" value="80">
       <div class="scale">
-        <span>10 mm (Dry)</span>
+        <span>0 mm</span>
         <span>120 mm</span>
         <span>250 mm (Extreme)</span>
       </div>
 
       <label class="field" for="scenario">Scenario profile</label>
       <select id="scenario">
-        <option value="rainfall">Heavy Monsoon Rainfall (80 mm)</option>
-        <option value="rapid-rise">Rapid River Rise (Mukkombu Surge)</option>
-        <option value="breach">Kollidam Embankment Breach</option>
+        <option value="rainfall">Rainfall context</option>
+        <option value="rapid-rise">Upstream release context</option>
+        <option value="breach">Breach context (barrier geometry unavailable)</option>
       </select>
 
+      <label class="field" for="rise">Assumed peak stage rise</label>
+      <select id="rise"><option value="dry">Dry test · WSE below terrain minimum</option><option value="0">0 m · baseline</option><option value="2" selected>2 m · moderate stage</option><option value="6">6 m · severe stage</option></select>
+      <small class="hint">Above illustrative 69.5 m baseline. Independent of rainfall; no calibrated rainfall–runoff model.</small>
       <button id="update" class="primary">
         <span class="btn-text">▶ Update Simulation</span>
         <span class="spinner" hidden></span>
       </button>
 
-      <!-- Map & Terrain Layers -->
+      <label class="layer"><span>Roads &amp; Bridge Crossings</span><input id="roads" type="checkbox" checked></label>
+<!-- Map & Terrain Layers -->
       <div class="section">
         <span>MAP & TERRAIN CONTROLS</span>
       </div>
 
       <div class="exaggeration-box">
         <label class="field" for="exaggeration">
-          3D Terrain Exaggeration <b id="exagLabel">1.5x</b>
+          3D Terrain Exaggeration <b id="exagLabel">1.0×</b>
         </label>
-        <input id="exaggeration" type="range" min="1.0" max="2.5" step="0.1" value="1.5">
+        <input id="exaggeration" type="range" min="1.0" max="2.5" step="0.1" value="1.0">
         <small class="hint">Visualization setting only; does not alter physical flood depths.</small>
       </div>
 
@@ -115,15 +116,15 @@
         <input id="flood" type="checkbox" checked>
       </label>
       <label class="layer">
-        <span>Depth Color Ramp & Contours</span>
+        <span>Depth Colours & Extent Edges</span>
         <input id="depthLayer" type="checkbox" checked>
       </label>
       <label class="layer">
-        <span>River Corridors & Monitoring Gauges</span>
+        <span>Mapped Water & Bank Boundaries</span>
         <input id="river" type="checkbox" checked>
       </label>
       <label class="layer">
-        <span>Vulnerable Infrastructure Markers</span>
+        <span>Building Impact Colours</span>
         <input id="riskZones" type="checkbox" checked>
       </label>
 
@@ -132,7 +133,7 @@
         <i>ⓘ</i>
         <div>
           <b>Hydrological Model Notice</b>
-          <p>Flood extents are computed via an 8-neighbor surface elevation connectivity algorithm from river seeds using SRTM 30m DEM. Not an official hydrodynamic warning.</p>
+          <p>Educational connected-stage scenario. Terrain and water boundaries are coarse; banks, bathymetry, barriers and drainage are not surveyed. Not an emergency warning.</p>
         </div>
       </div>
     </aside>
@@ -193,7 +194,7 @@
         <div class="timeline-slider-box">
           <input id="timelineSlider" type="range" min="0" max="5" step="1" value="0">
           <div class="timeline-ticks">
-            <span>0h (Dry)</span>
+            <span>0h (Baseline)</span>
             <span>3h</span>
             <span>6h (Rise)</span>
             <span>12h (Peak)</span>
@@ -211,11 +212,11 @@
       <!-- Bottom Map Legend Bar -->
       <div class="map-bottom">
         <div class="legend-row">
-          <span class="legend-item"><i class="swatch depth-low"></i> Minor (0–0.5m)</span>
+          <span class="legend-item"><i class="swatch depth-low"></i> Shallow (0.05–0.5m)</span>
           <span class="legend-item"><i class="swatch depth-mod"></i> Moderate (0.5–1.5m)</span>
           <span class="legend-item"><i class="swatch depth-high"></i> Severe (&gt;1.5m)</span>
           <span class="legend-item"><i class="swatch river-line"></i> Kaveri / Kollidam River</span>
-          <span class="legend-item"><i class="swatch station-dot"></i> Gauging Station</span>
+          <span class="legend-item"><i class="swatch station-dot"></i> Mapped Banks</span>
         </div>
         <small id="mapStatus">TERRAIN + VECTOR MAP ACTIVE</small>
       </div>
@@ -236,8 +237,8 @@
 
       <!-- Risk Score Bar -->
       <div class="score">
-        <span>Illustrative Risk Index</span>
-        <strong id="score">44<small>/100</small></strong>
+        <span>Peak affected buildings</span>
+        <strong id="score">—</strong>
         <div class="bar">
           <i id="bar" style="width: 44%"></i>
         </div>
@@ -253,18 +254,18 @@
         </div>
         <div>
           <small>PEAK WATER STAGE</small>
-          <strong id="water">71.6 <i>m</i></strong>
-          <small id="waterDiff">+2.1 m over riverbed</small>
+          <strong id="water">— <i>m</i></strong>
+          <small id="waterDiff">Waiting for scenario</small>
         </div>
         <div>
           <small>INUNDATED AREA</small>
-          <strong id="inundatedArea">53.7 <i>km²</i></strong>
-          <small>Connected lowlands</small>
+          <strong id="inundatedArea">— <i>km²</i></strong>
+          <small>Current frame · excludes mapped water</small>
         </div>
         <div>
           <small>AFFECTED STRUCTURES</small>
-          <strong id="affectedBld">3 <i>/ 10</i></strong>
-          <small>Vulnerability estimate</small>
+          <strong id="affectedBld">—</strong>
+          <small>Current frame · mapped footprints</small>
         </div>
       </div>
 
@@ -277,38 +278,40 @@
         <div class="insights-content" id="insightsContent">
           <div class="insight-row">
             <span>Water-Surface Elevation (WSE):</span>
-            <b id="insWse">71.6 m MSL</b>
+            <b id="insWse">—</b>
           </div>
           <div class="insight-row">
             <span>Target Study Elevation:</span>
-            <b id="insGround">64.0 m – 82.0 m MSL</b>
+            <b id="insGround">57–87 m · source grid</b>
           </div>
           <div class="insight-row">
             <span>Highest Risk Sector:</span>
-            <b id="insSector">Melur Lowlands & North Kollidam</b>
+            <b id="insSector">Not assessed</b>
           </div>
           <div class="insight-row">
             <span>Hydraulic Calculation:</span>
             <code class="formula">Water Depth = max(0, WSE − Ground Elev)</code>
           </div>
           <p class="insight-desc">
-            Water depth is calculated only where surface water is hydrologically connected to river channels via an 8-neighbor graph traversal, preventing isolated inland depressions from falsely flooding.
+            Water depth is calculated only where surface water is hydrologically connected to river channels via a four-neighbour graph traversal, preventing isolated inland depressions from falsely flooding.
           </p>
-          <small class="insight-datum">Vertical Datum: EGM96 / MSL · DEM: SRTM 30m Resolution (~19m raster cell)</small>
+          <small class="insight-datum">EGM96 assumed, unverified locally · ~38 m source pixels; ~17×19 m resampling adds no detail.</small>
         </div>
       </div>
 
       <!-- Key Infrastructure & Building Vulnerability -->
       <div class="section">
-        <span>KEY INFRASTRUCTURE IMPACT</span>
+        <span>CURRENT BUILDING DEPTH · TOP 35</span>
       </div>
       <div id="buildingList" class="building-list">
         <!-- Rendered dynamically -->
       </div>
 
+      <button id="routeBtn" class="anim-btn">Route selected building</button>
+      <p id="routeStatus">Select a building. Demonstration destination only; no verified shelter.</p>
       <!-- Hydrological Monitoring Points -->
       <div class="section">
-        <span>MONITORING GAUGING STATIONS</span>
+        <span>GAUGE DATA STATUS</span>
       </div>
       <div id="stations" class="station-list">
         <!-- Rendered dynamically -->
@@ -321,26 +324,26 @@
       <div class="insight">
         <b>↗</b>
         <div>
-          <strong id="insightTitle">Moderate Flood Risk Active</strong>
-          <small id="insight">Water levels overtop the lowest sections of the Cauvery and Kollidam banks. Elevated central temple grounds remain safe above flood stage.</small>
+          <strong id="insightTitle">Waiting for scenario</strong>
+          <small id="insight">No scenario result is available yet.</small>
         </div>
       </div>
     </aside>
   </main>
 
   <!-- Footer -->
-  <footer>
+  <section class="verification-bar"><span id="loadTime">Loading local geography…</span><span id="computeTime">Waiting for scenario…</span></section><footer>
     <div>
       FLOODSENSE DT · 3D DIGITAL TWIN 
       <span>Srirangam Island, Tiruchirappalli, Tamil Nadu</span>
     </div>
     <div>
-      Map data © OpenStreetMap contributors · SRTM 30m Elevation Tiles · OpenFreeMap
+      Map data © OpenStreetMap contributors · Mapzen Terrain Tiles · ODbL data
     </div>
     <b>RESEARCH & DEMONSTRATION PROTOTYPE · NOT FOR EMERGENCY DECISIONS</b>
   </footer>
 
-  <script src="https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js"></script>
+  <script src="vendor/maplibre-gl.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

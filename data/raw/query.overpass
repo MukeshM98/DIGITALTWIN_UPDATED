@@ -1,0 +1,1 @@
+[out:json][timeout:120];(way[building](10.845,78.67,10.9,78.72);way[highway](10.845,78.67,10.9,78.72);way[natural=water](10.845,78.67,10.9,78.72);relation[natural=water](10.845,78.67,10.9,78.72);way[landuse](10.845,78.67,10.9,78.72););out geom;

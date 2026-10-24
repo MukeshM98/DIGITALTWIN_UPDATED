@@ -1,0 +1,60 @@
+{
+  "prepared_utc": "2026-10-24T07:19:20.829798+00:00",
+  "coverage_wsen": [
+    78.67,
+    10.845,
+    78.72,
+    10.9
+  ],
+  "crs": "EPSG:4326 GeoJSON lon,lat",
+  "units": "metres for elevations/heights; degrees for coordinates",
+  "counts": {
+    "buildings": 11092,
+    "roads": 1370,
+    "water": 10,
+    "landcover": 89
+  },
+  "licenses": {
+    "OSM": "ODbL 1.0 https://www.openstreetmap.org/copyright",
+    "terrain": "https://github.com/tilezen/joerd/blob/master/docs/attribution.md",
+    "MapLibre": "BSD-3-Clause; vendor/LICENSE.txt"
+  },
+  "limitations": [
+    "OSM completeness and heights unverified",
+    "Terrain ~38 m pixels at zoom 12; resampling adds no detail",
+    "No surveyed banks, bridge deck elevations, bathymetry or validated shelters",
+    "Raw OSM retained to reproduce preparation without requests"
+  ],
+  "acquisitions": [
+    {
+      "url": "https://overpass-api.de/api/interpreter",
+      "path": "data\\raw\\osm.json",
+      "acquired_utc": "2026-10-24T06:58:32.145939+00:00",
+      "sha256": "e058dab742ea324854399b3cc0d9a5e82dc331b2929e6b44a6dba5adba7a702c"
+    },
+    {
+      "url": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/12/2943/1923.png",
+      "path": "frontend\\data\\terrain\\12\\2943\\1923.png",
+      "acquired_utc": "2026-10-24T06:58:35.292157+00:00",
+      "sha256": "04fd0180f425ea9c70a0548f4f7949dc6755e113218487981ec4af7b67f12cd3"
+    },
+    {
+      "url": "https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.js",
+      "path": "frontend\\vendor\\maplibre-gl.js",
+      "acquired_utc": "2026-10-24T06:58:42.761724+00:00",
+      "sha256": "b5a34e6930ff937dbbb9eec8892cffb80ba473cce88ae5ca8c4654432f5f0ebc"
+    },
+    {
+      "url": "https://unpkg.com/maplibre-gl@5.6.1/dist/maplibre-gl.css",
+      "path": "frontend\\vendor\\maplibre-gl.css",
+      "acquired_utc": "2026-10-24T06:58:46.363763+00:00",
+      "sha256": "792ac997dcf6ae6f643eb4e2dee4630c85e7056526bd8fb85ffe83c67d6c41b4"
+    },
+    {
+      "url": "https://unpkg.com/maplibre-gl@5.6.1/LICENSE.txt",
+      "path": "frontend\\vendor\\LICENSE.txt",
+      "acquired_utc": "2026-10-24T06:58:54.304947+00:00",
+      "sha256": "ee5fc05a0677eaf69601d2c7db0d9ecd6cc27c3abc1d0733bc9ed34707cf8ef2"
+    }
+  ]
+}

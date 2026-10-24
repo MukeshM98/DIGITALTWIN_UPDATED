@@ -1,0 +1,77 @@
+[
+  {
+    "scenario": "dry",
+    "rise": 0,
+    "compute_s": 0.993,
+    "serialize_s": 0.0,
+    "cached_s": 2e-06,
+    "json_bytes": 2028,
+    "gzip_bytes": 622,
+    "summary": {
+      "risk_index": 0,
+      "risk_level": "LOW",
+      "peak_wse_m": 56.0,
+      "peak_water_level_change_m": -13.5,
+      "max_inundated_sqkm": 0.0,
+      "total_affected_buildings": 0,
+      "building_risk_breakdown": {
+        "safe": 11092,
+        "minor": 0,
+        "moderate": 0,
+        "severe": 0
+      },
+      "highest_risk_sector": "Not assessed; no validated sector boundaries",
+      "timesteps_count": 6
+    }
+  },
+  {
+    "scenario": "rainfall",
+    "rise": 2,
+    "compute_s": 3.201,
+    "serialize_s": 0.059,
+    "cached_s": 5e-06,
+    "json_bytes": 1985195,
+    "gzip_bytes": 222597,
+    "summary": {
+      "risk_index": 20,
+      "risk_level": "LOW",
+      "peak_wse_m": 71.5,
+      "peak_water_level_change_m": 2.0,
+      "max_inundated_sqkm": 16.161,
+      "total_affected_buildings": 2193,
+      "building_risk_breakdown": {
+        "safe": 8899,
+        "minor": 629,
+        "moderate": 600,
+        "severe": 964
+      },
+      "highest_risk_sector": "Not assessed; no validated sector boundaries",
+      "timesteps_count": 6
+    }
+  },
+  {
+    "scenario": "rainfall",
+    "rise": 6,
+    "compute_s": 3.25,
+    "serialize_s": 0.087,
+    "cached_s": 5e-06,
+    "json_bytes": 2516378,
+    "gzip_bytes": 250220,
+    "summary": {
+      "risk_index": 81,
+      "risk_level": "HIGH",
+      "peak_wse_m": 75.5,
+      "peak_water_level_change_m": 6.0,
+      "max_inundated_sqkm": 23.232,
+      "total_affected_buildings": 8958,
+      "building_risk_breakdown": {
+        "safe": 2134,
+        "minor": 1362,
+        "moderate": 1751,
+        "severe": 5845
+      },
+      "highest_risk_sector": "Not assessed; no validated sector boundaries",
+      "timesteps_count": 6
+    }
+  }
+]

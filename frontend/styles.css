@@ -1171,4 +1171,29 @@ footer b {
     text-align: center;
     gap: 6px;
   }
-}
+}/* Local-first scene clarity and readable controls. */
+[hidden] { display: none !important; }
+main { grid-template-columns: 245px minmax(400px,1fr) 270px; gap: 10px; padding: 10px; }
+.panel { overflow-x: hidden; }
+.map-container { min-height: 650px; }
+.map-bottom { bottom: 34px; }
+.map-timeline { bottom: 78px; flex-wrap: wrap; gap: 8px; }
+.legend-row { flex-wrap: wrap; font-size: 9px; gap: 8px; }
+.map-bottom small { position: absolute; bottom: 40px; left: 0; font-size: 8px; }
+.terrain-inspector { max-width: 235px; }
+.camera-toolbar { top: 108px; }
+.maplibregl-ctrl-attrib { font-size: 9px !important; max-width: 90%; }
+.bld-card { text-align: left; color: #e7eef0; font: inherit; font-size: 11px; }
+.verification-bar { display: flex; justify-content: space-between; padding: 8px 20px; color: #a8c4ce; }
+#routeStatus { font-size: 11px; line-height: 1.5; color: #c7d8e1; }
+.hint { font-size: 10px; line-height: 1.4; }
+.swatch.river-line { background: #368c9b; height: 8px; }
+@media(max-width:1100px) { main { grid-template-columns: 220px minmax(360px,1fr); } .right-panel { grid-column:1/-1; } }
+@media(max-width:700px) { main { grid-template-columns:1fr; } .map-container { min-height:620px; } .verification-bar { flex-direction:column; } }
+.right-panel { grid-column: auto; }
+@media(max-width:1100px) { .right-panel { grid-column: 1 / -1; } }
+
+.geo-label { font: 700 10px system-ui; letter-spacing:1px; color:#173a46; background:rgba(255,255,240,.85); padding:3px 6px; border-radius:3px; pointer-events:none; }
+.map-timeline { bottom:90px; }
+.map-bottom { bottom:33px; }
+.map-bottom small { bottom:38px; }

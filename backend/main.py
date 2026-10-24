@@ -3,6 +3,9 @@ import json
 import time
 import urllib.request
 import ssl
+import os
+from fastapi.middleware.gzip import GZipMiddleware
+from backend.routing import router
 from typing import Literal, Optional
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,10 +34,12 @@ app.add_middleware(
 
 class ScenarioRequest(BaseModel):
     rainfall_mm_24h: float = Field(default=80.0, ge=0.0, le=300.0, description="24-hour rainfall accumulation in mm")
-    scenario: Literal["rainfall", "rapid-rise", "breach"] = Field(
+    scenario: Literal["rainfall", "rapid-rise", "breach", "dry"] = Field(
         default="rainfall",
         description="Scenario profile: 'rainfall' (monsoon precipitation), 'rapid-rise' (upstream dam release surge), 'breach' (embankment breach)"
     )
+
+    peak_rise_m: Optional[float] = Field(default=None, ge=0, le=10, description="Explicit illustrative peak stage rise above 69.5 m baseline")
 
 # Cache for Open-Meteo weather
 _weather_cache = {"timestamp": 0, "data": None}
@@ -47,7 +52,7 @@ def root_api():
         "study_area": "Srirangam Island, Tiruchirappalli, Tamil Nadu, India",
         "focus_coordinates": {"latitude": 10.865, "longitude": 78.693, "crs": "EPSG:4326"},
         "status": "operational",
-        "terrain_engine": "SRTM 30m / Terrarium 8-neighbor connectivity solver",
+        "terrain_engine": "Prepared Mapzen terrain / four-neighbour connectivity",
         "docs": "/docs"
     }
 
@@ -80,15 +85,10 @@ def metadata():
                 "pitch_deg": 58,
                 "bearing_deg": -20
             },
-            "bounding_box": {
-                "south": 10.8565,
-                "west": 78.6820,
-                "north": 10.8820,
-                "east": 78.7050
-            }
+            "bounding_box": engine.meta["bounds"]
         },
         "crs": "EPSG:4326 (WGS84)",
-        "vertical_datum": "EGM96 / MSL (metres)",
+        "vertical_datum": engine.meta["vertical_datum"],
         "dem": engine.meta
     }
 
@@ -100,11 +100,13 @@ def weather():
     """
     now = time.time()
     if _weather_cache["data"] and (now - _weather_cache["timestamp"] < 600):
-        return _weather_cache["data"]
+        return {**_weather_cache["data"], "status": "cached", "is_cached": True}
 
     url = "https://api.open-meteo.com/v1/forecast?latitude=10.865&longitude=78.693&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&forecast_days=1"
     try:
-        ctx = ssl._create_unverified_context()
+        if os.environ.get("FLOODSENSE_OFFLINE") == "1":
+            raise ConnectionError("Offline configuration")
+        ctx = ssl.create_default_context()
         req = urllib.request.Request(url, headers={"User-Agent": "FloodSenseDT/2.0"})
         with urllib.request.urlopen(req, context=ctx, timeout=4) as resp:
             data = json.loads(resp.read().decode())
@@ -127,7 +129,7 @@ def weather():
     except Exception as e:
         fallback = {
             "status": "offline_fallback",
-            "source": "Cached Regional Climate Profile",
+            "source": "Illustrative weather sample, not an observation",
             "location": "Srirangam Island (10.865°N, 78.693°E)",
             "observation_time": "Regional Fallback Estimate",
             "temperature_c": 29.5,
@@ -142,7 +144,7 @@ def weather():
 @app.post("/api/scenario")
 def scenario(p: ScenarioRequest):
     """Calculates scenario risk score and peak hydrological indicators."""
-    sim = engine.simulate(p.rainfall_mm_24h, p.scenario)
+    sim = engine.simulate(p.rainfall_mm_24h, p.scenario, p.peak_rise_m)
     summary = sim["summary"]
     return {
         "rainfall_mm_24h": p.rainfall_mm_24h,
@@ -154,7 +156,7 @@ def scenario(p: ScenarioRequest):
         "inundated_sqkm": summary["max_inundated_sqkm"],
         "affected_buildings_count": summary["total_affected_buildings"],
         "highest_risk_sector": summary["highest_risk_sector"],
-        "method": "SRTM DEM 8-connected flood propagation model"
+        "method": "Educational connected-stage scenario"
     }
 
 @app.post("/api/simulate")
@@ -163,18 +165,21 @@ def simulate(p: ScenarioRequest):
     Executes full multi-timestep terrain-aware flood simulation.
     Returns GeoJSON animation frames, building impact assessments, and simulation insights.
     """
-    return engine.simulate(p.rainfall_mm_24h, p.scenario)
+    return engine.simulate(p.rainfall_mm_24h, p.scenario, p.peak_rise_m)
 
 @app.get("/api/elevation")
 def get_elevation_point(lon: float = Query(..., ge=78.60, le=78.80), lat: float = Query(..., ge=10.80, le=10.95)):
-    """Returns exact ground elevation in metres MSL for a queried coordinate."""
-    elev = engine.get_elevation(lon, lat)
+    """Returns sampled coarse grid elevation in metres MSL for a queried coordinate."""
+    try:
+        elev = engine.get_elevation(lon, lat)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc))
     return {
         "longitude": lon,
         "latitude": lat,
         "ground_elevation_m": round(elev, 2),
         "vertical_datum": "EGM96 / MSL",
-        "source": "SRTM 30m DEM"
+        "source": engine.meta["source"]
     }
 
 @app.get("/api/river")
@@ -193,10 +198,32 @@ def points():
 
 @app.get("/api/buildings")
 def buildings():
-    p = DATA_DIR / "buildings.geojson"
+    p = FRONTEND_DIR / "data/buildings-osm.geojson"
     if p.exists():
         return json.loads(p.read_text(encoding="utf-8"))
     return {"type": "FeatureCollection", "features": []}
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+class RouteRequest(BaseModel):
+    start: tuple[float, float]
+    end: tuple[float, float]
+    wse_m: float = Field(ge=50, le=100)
+
+@app.post("/api/route")
+def route(p: RouteRequest):
+    if not engine.inside(*p.start) or not engine.inside(*p.end):
+        raise HTTPException(422, "Route endpoints outside study area")
+    return router.route(p.start, p.end, p.wse_m)
+
+@app.get("/api/inspect")
+def inspect(lon: float, lat: float, wse_m: float = Query(69.5, ge=50, le=100)):
+    try:
+        elevation = engine.get_elevation(lon,lat)
+    except ValueError as exc:
+        raise HTTPException(404,str(exc))
+    r,c=engine.coord_to_grid(lon,lat)
+    return {"ground_elevation_m": elevation, "depth_m": float(engine.depth_at_stage(wse_m)[r,c]), "baseline_water": bool(engine.water_mask[r,c]), "wse_m": wse_m, "datum": engine.meta["vertical_datum"]}
 
 # Mount frontend static files so the digital twin runs seamlessly on port 8000
 if FRONTEND_DIR.exists():
